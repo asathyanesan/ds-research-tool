@@ -2,7 +2,7 @@
 
 A comprehensive web application for Down syndrome animal model comparison and experimental design guidance. Built with React and deployed free on GitHub Pages.
 
-## 🎯 Features
+## 🐁 Features
 
 - **Animal Model Database**: Compare Ts65Dn, Tc1, Dp(16)1Yey, and other DS mouse models
 - **Study Design Wizard**: Get guidance on experimental design and sample sizes
@@ -11,7 +11,7 @@ A comprehensive web application for Down syndrome animal model comparison and ex
 - **Jackson Lab Integration**: Direct links to strain information and ordering
 - **Search & Filter**: Find the right model for your research question
 
-## 🚀 Live Demo
+## 🌐 Demo
 
 Visit: [https://asathyanesan.github.io/ds-research-tool](https://asathyanesan.github.io/ds-research-tool)
 
@@ -128,7 +128,7 @@ The application automatically deploys to GitHub Pages via GitHub Actions when ch
 - **Tc1**: Human chromosome 21, all DS genes
 
 ### For Molecular Studies
-- **Tc1**: Best human relevance
+- **Tc1**: High genetic relevance to human trisomy
 - **Dp(16)1Yey**: Defined gene set, interferon focus
 
 ### For Immunology/Inflammation
@@ -155,7 +155,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Made with ❤️ for the DS research community**
+**Made with ❤️ for the DS community**
 
 ## 🔧 Technical Details
 
