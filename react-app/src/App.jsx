@@ -1,492 +1,567 @@
-import React, { useState, useEffect } from 'react'
-import { Search, ExternalLink, CheckCircle, Circle, Download, BookOpen, Mouse, FlaskConical, BarChart3, FileText, Info, ChevronDown, ChevronUp } from 'lucide-react'
-import Fuse from 'fuse.js'
+import React, { useState } from 'react';
+import { Search, FileText, CheckSquare, BookOpen, Info, ExternalLink, Download } from 'lucide-react';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('models')
-  const [models, setModels] = useState([])
-  const [guidelines, setGuidelines] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedModel, setSelectedModel] = useState(null)
-  const [checkedItems, setCheckedItems] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [expandedCategories, setExpandedCategories] = useState({})
+  const [activeTab, setActiveTab] = useState('models');
+  const [selectedModels, setSelectedModels] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
 
-  // Load data on component mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        const [modelsRes, guidelinesRes] = await Promise.all([
-          fetch('/ds-research-tool/data/animal-models.json'),
-          fetch('/ds-research-tool/data/arrive-guidelines.json')
-        ])
-        
-        if (modelsRes.ok && guidelinesRes.ok) {
-          const modelsData = await modelsRes.json()
-          const guidelinesData = await guidelinesRes.json()
-          setModels(modelsData)
-          setGuidelines(guidelinesData)
-          
-          // Initialize expanded categories to show all by default
-          const expandedState = {}
-          guidelinesData.forEach(category => {
-            expandedState[category.category] = true
-          })
-          setExpandedCategories(expandedState)
-        }
-      } catch (error) {
-        console.error('Error loading data:', error)
-      } finally {
-        setLoading(false)
-      }
+  // Animal models data - directly in component for simplicity
+  const animalModels = [
+    {
+      id: 'ts65dn',
+      name: 'Ts65Dn',
+      species: 'Mouse',
+      background: 'B6EiC3Sn',
+      trisomy: 'Partial (MMU16)',
+      genes: '104 genes',
+      phenotypes: ['Cognitive deficits', 'Craniofacial abnormalities', 'Heart defects', 'Cerebellar hypoplasia'],
+      advantages: ['Well-characterized', 'Cognitive phenotype', 'Available colonies', 'Extensive literature'],
+      limitations: ['Partial trisomy', 'Extra genes from MMU17', 'Fertility issues', 'Not complete DS model'],
+      applications: ['Cognitive studies', 'Therapeutics testing', 'Pathophysiology', 'Behavioral analysis'],
+      jackson_link: 'https://www.jax.org/strain/001924',
+      rrid: 'IMSR_JAX:001924'
+    },
+    {
+      id: 'tc1',
+      name: 'Tc1',
+      species: 'Mouse',
+      background: 'Mixed',
+      trisomy: 'Complete HSA21',
+      genes: 'Most HSA21 genes',
+      phenotypes: ['Learning deficits', 'Synaptic dysfunction', 'Neurodegeneration', 'Memory impairment'],
+      advantages: ['Complete human chr21', 'Human-relevant genetics', 'All DS genes present'],
+      limitations: ['Poor breeding', 'High mortality', 'Genomic instability', 'Limited availability'],
+      applications: ['Genetic studies', 'Molecular mechanisms', 'Human relevance studies', 'Gene dosage effects'],
+      jackson_link: 'https://www.jax.org/strain/004924',
+      rrid: 'IMSR_JAX:004924'
+    },
+    {
+      id: 'dp16',
+      name: 'Dp(16)1Yey',
+      species: 'Mouse',
+      background: 'C57BL/6J',
+      trisomy: 'Partial (MMU16)',
+      genes: '33 genes',
+      phenotypes: ['Motor deficits', 'Hyperactivity', 'Memory defects', 'Interferon dysregulation'],
+      advantages: ['Defined gene set', 'Good breeding', 'Interferon studies', 'JAK pathway research'],
+      limitations: ['Smaller gene set', 'Limited cognitive phenotype', 'Newer model'],
+      applications: ['Interferon pathway', 'Specific gene studies', 'Immunotherapy', 'JAK inhibitor studies'],
+      jackson_link: 'https://www.jax.org/strain/013530',
+      rrid: 'IMSR_JAX:013530'
+    },
+    {
+      id: 'dp17',
+      name: 'Dp(17)1Yey',
+      species: 'Mouse', 
+      background: 'C57BL/6J',
+      trisomy: 'Partial (MMU17)',
+      genes: '24 genes',
+      phenotypes: ['Mild cognitive deficits', 'Motor learning defects'],
+      advantages: ['Smaller gene set', 'Good breeding', 'Controls for Ts65Dn'],
+      limitations: ['Mild phenotype', 'Limited applications'],
+      applications: ['Control studies', 'Gene mapping', 'Complementation analysis'],
+      jackson_link: 'https://www.jax.org/strain/013529',
+      rrid: 'IMSR_JAX:013529'
+    }
+  ];
+
+  // ARRIVE guidelines data
+  const guidelines = [
+    { id: 1, category: 'Study Design', item: 'Provide precise details of study design including primary research question', checked: false },
+    { id: 2, category: 'Study Design', item: 'Explain how sample size was determined', checked: false },
+    { id: 3, category: 'Animals', item: 'Provide details of animals used including species, strain, sex, age', checked: false },
+    { id: 4, category: 'Animals', item: 'Explain housing and husbandry conditions', checked: false },
+    { id: 5, category: 'Procedures', item: 'Describe procedures in detail for each experimental group', checked: false },
+    { id: 6, category: 'Procedures', item: 'Describe experimental outcomes and how they were assessed', checked: false },
+    { id: 7, category: 'Statistics', item: 'Describe statistical methods for each analysis', checked: false },
+    { id: 8, category: 'Statistics', item: 'Report exact P values and effect sizes where possible', checked: false },
+    { id: 9, category: 'Results', item: 'Report study timeline and actual sample sizes', checked: false },
+    { id: 10, category: 'Results', item: 'Present results with appropriate statistics', checked: false }
+  ];
+
+  const [guidelineChecks, setGuidelineChecks] = useState(guidelines);
+
+  const simulateLLMResponse = (query) => {
+    const lowerQuery = query.toLowerCase();
+    
+    if (lowerQuery.includes('ts65dn') || lowerQuery.includes('cognitive')) {
+      return 'For cognitive studies, Ts65Dn is the gold standard DS mouse model (RRID: IMSR_JAX:001924). It shows robust learning and memory deficits similar to DS. Recommended tests: Morris Water Maze, Novel Object Recognition, Y-maze. Consider n≥10 per group and account for sex differences.';
     }
     
-    loadData()
-  }, [])
-
-  // Search functionality
-  const fuse = new Fuse(models, {
-    keys: ['name', 'species', 'phenotypes', 'applications', 'advantages'],
-    threshold: 0.3,
-  })
-
-  const filteredModels = searchTerm 
-    ? fuse.search(searchTerm).map(result => result.item)
-    : models
-
-  // Checklist functionality
-  const toggleCheck = (itemId) => {
-    setCheckedItems(prev => ({
-      ...prev,
-      [itemId]: !prev[itemId]
-    }))
-  }
-
-  const exportChecklist = () => {
-    const completed = Object.entries(checkedItems)
-      .filter(([_, checked]) => checked)
-      .map(([id, _]) => {
-        for (const category of guidelines) {
-          const item = category.items.find(item => item.id === id)
-          if (item) {
-            return `${category.category}: ${item.item}`
-          }
-        }
-        return id
-      })
+    if (lowerQuery.includes('tc1') || lowerQuery.includes('human')) {
+      return 'Tc1 mice (RRID: IMSR_JAX:004924) carry the complete human chromosome 21, making them genetically most similar to DS. However, they have breeding difficulties and high mortality. Best for molecular studies.';
+    }
     
-    const text = `ARRIVE Guidelines Checklist - Completed Items:\n\n${completed.join('\n')}\n\nGenerated by DS Research Tool`
-    const blob = new Blob([text], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'arrive-checklist.txt'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+    if (lowerQuery.includes('dp16') || lowerQuery.includes('interferon')) {
+      return 'Dp(16)1Yey mice (RRID: IMSR_JAX:013530) are excellent for interferon pathway and immunotherapy studies. Perfect for JAK inhibitor studies, cytokine analysis, and neuroinflammation research.';
+    }
+    
+    if (lowerQuery.includes('sample size') || lowerQuery.includes('power')) {
+      return 'Sample size depends on effect size and variability. For behavioral studies: n=8-12 per group (80% power, α=0.05). For molecular studies: n=6-8 may suffice. Use G*Power calculator and account for 10-20% attrition.';
+    }
+    
+    if (lowerQuery.includes('rrid')) {
+      return 'RRIDs are required for proper scientific reporting. DS models: Ts65Dn (IMSR_JAX:001924), Tc1 (IMSR_JAX:004924), Dp16 (IMSR_JAX:013530), Dp17 (IMSR_JAX:013529). Include in methods section for reproducibility.';
+    }
 
-  const toggleCategory = (category) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [category]: !prev[category]
-    }))
-  }
+    return 'I can help with DS animal model selection, experimental design, sample size calculations, ARRIVE compliance, and RRID identification. Ask me about specific models or research guidelines!';
+  };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading DS Research Tool...</p>
-        </div>
-      </div>
-    )
-  }
+  const handleChat = () => {
+    if (!chatInput.trim()) return;
+    
+    const userMessage = { type: 'user', content: chatInput };
+    const llmResponse = { type: 'assistant', content: simulateLLMResponse(chatInput) };
+    
+    setChatMessages(prev => [...prev, userMessage, llmResponse]);
+    setChatInput('');
+  };
+
+  const handleModelSelect = (modelId) => {
+    setSelectedModels(prev => 
+      prev.includes(modelId) 
+        ? prev.filter(id => id !== modelId)
+        : [...prev, modelId]
+    );
+  };
+
+  const handleGuidelineCheck = (id) => {
+    setGuidelineChecks(prev => prev.map(item => 
+      item.id === id ? { ...item, checked: !item.checked } : item
+    ));
+  };
+
+  const filteredModels = animalModels.filter(model =>
+    model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    model.phenotypes.some(p => p.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    model.applications.some(a => a.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Mouse className="h-8 w-8 text-blue-600 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">DS Research Tool</h1>
-            </div>
-            <div className="text-sm text-gray-500">
-              Down Syndrome Animal Model Comparison & Research Guidelines
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">DS Research Assistant</h1>
+          <p className="text-gray-600">Down syndrome animal model comparison and experimental design guidance</p>
+          <div className="text-sm text-gray-500 mt-2 bg-white/50 rounded-lg p-2 inline-block">
+            💡 100% Open Source • Free GitHub Hosting • ARRIVE/FAIR compliant
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
+        <nav className="flex justify-center mb-8">
+          <div className="bg-white rounded-lg p-1 shadow-lg">
             {[
-              { id: 'models', label: 'Animal Models', icon: Mouse },
-              { id: 'compare', label: 'Model Comparison', icon: BarChart3 },
-              { id: 'guidelines', label: 'ARRIVE Guidelines', icon: FileText },
-              { id: 'resources', label: 'Resources', icon: BookOpen }
-            ].map(({ id, label, icon: Icon }) => (
+              { id: 'models', label: 'Animal Models', icon: Search },
+              { id: 'compare', label: 'Compare', icon: FileText },
+              { id: 'design', label: 'Study Design', icon: Info },
+              { id: 'guidelines', label: 'ARRIVE Check', icon: CheckSquare },
+              { id: 'chat', label: 'AI Assistant', icon: BookOpen }
+            ].map(tab => (
               <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={`flex items-center px-3 py-4 text-sm font-medium border-b-2 ${
-                  activeTab === id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                <Icon className="h-4 w-4 mr-2" />
-                {label}
+                <tab.icon size={16} />
+                {tab.label}
               </button>
             ))}
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Animal Models Tab */}
-        {activeTab === 'models' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-bold text-gray-900">Down Syndrome Animal Models</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search models..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-            
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredModels.map((model) => (
-                <div key={model.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-semibold text-gray-900">{model.name}</h3>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                      {model.availability}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Background:</span>
-                      <span className="ml-2 text-sm text-gray-900">{model.background}</span>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Trisomy:</span>
-                      <span className="ml-2 text-sm text-gray-900">{model.trisomy}</span>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Genes:</span>
-                      <span className="ml-2 text-sm text-gray-900">{model.genes}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Key Phenotypes:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {model.phenotypes.slice(0, 3).map((phenotype, idx) => (
-                        <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                          {phenotype}
-                        </span>
-                      ))}
-                      {model.phenotypes.length > 3 && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                          +{model.phenotypes.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 flex space-x-3">
-                    <button
-                      onClick={() => setSelectedModel(model)}
-                      className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      View Details
-                    </button>
-                    <a
-                      href={model.jackson_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          {activeTab === 'models' && (
+            <div>
+              <div className="mb-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Search models by name, phenotype, or application..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
 
-        {/* Model Comparison Tab */}
-        {activeTab === 'compare' && (
-          <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-gray-900">Model Comparison</h2>
-            
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trisomy</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Genes</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Best Applications</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Availability</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {models.map((model) => (
-                      <tr key={model.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{model.name}</div>
-                          <div className="text-sm text-gray-500">{model.background}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{model.trisomy}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{model.genes}</td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {model.applications.slice(0, 2).join(', ')}
-                            {model.applications.length > 2 && '...'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            model.availability === 'Commercial' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {model.availability}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+                {filteredModels.map(model => (
+                  <div 
+                    key={model.id} 
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                      selectedModels.includes(model.id)
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => handleModelSelect(model.id)}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="text-lg font-semibold text-gray-800">{model.name}</h3>
+                      <div className="flex gap-2">
+                        <span className="text-xs bg-gray-200 px-2 py-1 rounded">{model.species}</span>
+                        <a 
+                          href={model.jackson_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink size={16} />
+                        </a>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2 text-sm mb-3">
+                      <div><span className="font-medium">Background:</span> {model.background}</div>
+                      <div><span className="font-medium">Trisomy:</span> {model.trisomy}</div>
+                      <div><span className="font-medium">Genes:</span> {model.genes}</div>
+                      <div>
+                        <span className="font-medium">RRID:</span>{' '}
+                        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                          {model.rrid}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <span className="font-medium text-sm">Key Phenotypes:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {model.phenotypes.slice(0, 3).map((phenotype, idx) => (
+                          <span key={idx} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                            {phenotype}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        ))}
+                        {model.phenotypes.length > 3 && (
+                          <span className="text-xs text-gray-500">+{model.phenotypes.length - 3} more</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <span className="font-medium text-sm">Best Applications:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {model.applications.slice(0, 2).map((app, idx) => (
+                          <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                            {app}
+                          </span>
+                        ))}
+                        {model.applications.length > 2 && (
+                          <span className="text-xs text-gray-500">+{model.applications.length - 2} more</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500">
+                      Click to select for comparison • External link to Jackson Lab
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ARRIVE Guidelines Tab */}
-        {activeTab === 'guidelines' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-bold text-gray-900">ARRIVE Guidelines Checklist</h2>
-              <button
-                onClick={exportChecklist}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export Checklist
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {guidelines.map((category) => (
-                <div key={category.category} className="bg-white rounded-lg shadow">
-                  <button
-                    onClick={() => toggleCategory(category.category)}
-                    className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 transition-colors"
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900">{category.category}</h3>
-                    {expandedCategories[category.category] ? (
-                      <ChevronUp className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-500" />
-                    )}
-                  </button>
-                  
-                  {expandedCategories[category.category] && (
-                    <div className="px-6 pb-6 space-y-4">
-                      {category.items.map((item) => (
-                        <div key={item.id} className="border-l-4 border-blue-200 pl-4">
-                          <div className="flex items-start space-x-3">
-                            <button
-                              onClick={() => toggleCheck(item.id)}
-                              className="mt-1 text-blue-600 hover:text-blue-700"
-                            >
-                              {checkedItems[item.id] ? (
-                                <CheckCircle className="h-5 w-5" />
-                              ) : (
-                                <Circle className="h-5 w-5" />
-                              )}
-                            </button>
-                            <div className="flex-1">
-                              <p className="font-medium text-gray-900">{item.item}</p>
-                              <div className="mt-2 text-sm text-gray-600 whitespace-pre-line">
-                                {item.details}
-                              </div>
-                            </div>
+          {activeTab === 'compare' && (
+            <div>
+              <h2 className="text-2xl font-semibold mb-4">Model Comparison</h2>
+              {selectedModels.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <FileText size={48} className="mx-auto mb-4 text-gray-300" />
+                  <p>Select models from the Animal Models tab to compare them here</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border p-3 text-left">Feature</th>
+                          {selectedModels.map(modelId => {
+                            const model = animalModels.find(m => m.id === modelId);
+                            return <th key={modelId} className="border p-3 text-center">{model.name}</th>;
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {['background', 'trisomy', 'genes', 'rrid'].map(feature => (
+                          <tr key={feature}>
+                            <td className="border p-3 font-medium capitalize">
+                              {feature === 'rrid' ? 'RRID' : feature}
+                            </td>
+                            {selectedModels.map(modelId => {
+                              const model = animalModels.find(m => m.id === modelId);
+                              return (
+                                <td key={modelId} className="border p-3 text-center">
+                                  {feature === 'rrid' ? (
+                                    <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
+                                      {model[feature]}
+                                    </span>
+                                  ) : (
+                                    model[feature]
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {selectedModels.map(modelId => {
+                      const model = animalModels.find(m => m.id === modelId);
+                      return (
+                        <div key={modelId} className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <h3 className="font-semibold text-lg">{model.name}</h3>
+                            <span className="font-mono text-xs bg-gray-200 px-2 py-1 rounded">
+                              {model.rrid}
+                            </span>
+                          </div>
+                          
+                          <div className="mb-3">
+                            <h4 className="font-medium text-green-700">Advantages</h4>
+                            <ul className="text-sm list-disc list-inside">
+                              {model.advantages.map((adv, idx) => (
+                                <li key={idx}>{adv}</li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="mb-3">
+                            <h4 className="font-medium text-red-700">Limitations</h4>
+                            <ul className="text-sm list-disc list-inside">
+                              {model.limitations.map((limit, idx) => (
+                                <li key={idx}>{limit}</li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div>
+                            <h4 className="font-medium text-blue-700">Best Applications</h4>
+                            <ul className="text-sm list-disc list-inside">
+                              {model.applications.map((app, idx) => (
+                                <li key={idx}>{app}</li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'design' && (
+            <div>
+              <h2 className="text-2xl font-semibold mb-4">Study Design Wizard</h2>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Research Question</label>
+                    <textarea
+                      placeholder="What is your main research question? e.g., 'Does compound X improve learning deficits in Ts65Dn mice?'"
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      rows="3"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Animal Model</label>
+                      <select className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select model...</option>
+                        {animalModels.map(model => (
+                          <option key={model.id} value={model.id}>{model.name}</option>
+                        ))}
+                      </select>
                     </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Study Type</label>
+                      <select className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select type...</option>
+                        <option value="cognitive">Cognitive/Behavioral</option>
+                        <option value="molecular">Molecular/Biochemical</option>
+                        <option value="therapeutic">Therapeutic intervention</option>
+                        <option value="pathophysiology">Pathophysiology</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Sample Size per Group</label>
+                      <input
+                        type="number"
+                        placeholder="e.g., 10"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Study Duration</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 8 weeks"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="font-medium text-blue-800 mb-3">💡 Design Recommendations</h3>
+                  <div className="space-y-3 text-sm text-blue-700">
+                    <div>
+                      <h4 className="font-medium">Sample Size Guidelines:</h4>
+                      <ul className="list-disc list-inside mt-1">
+                        <li>Behavioral studies: n≥10 per group</li>
+                        <li>Molecular studies: n≥6 per group</li>
+                        <li>Use G*Power for calculations</li>
+                        <li>Account for 10-20% attrition</li>
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium">Experimental Design:</h4>
+                      <ul className="list-disc list-inside mt-1">
+                        <li>Include both sexes (sex as biological variable)</li>
+                        <li>Randomize cage assignments</li>
+                        <li>Blind investigators to treatment</li>
+                        <li>Use appropriate controls</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium">Common Endpoints:</h4>
+                      <ul className="list-disc list-inside mt-1">
+                        <li>Ts65Dn: Morris Water Maze, Y-maze, NOR</li>
+                        <li>Tc1: Molecular markers, gene expression</li>
+                        <li>Dp16: Cytokines, interferon signaling</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'guidelines' && (
+            <div>
+              <h2 className="text-2xl font-semibold mb-4">ARRIVE Guidelines Checklist</h2>
+
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                <div className="text-sm">
+                  Completed: {guidelineChecks.filter(g => g.checked).length}/{guidelineChecks.length} items
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(guidelineChecks.filter(g => g.checked).length / guidelineChecks.length) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {guidelineChecks.map((item) => (
+                  <div 
+                    key={item.id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      item.checked ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    onClick={() => handleGuidelineCheck(item.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <CheckSquare 
+                        size={20} 
+                        className={item.checked ? 'text-green-600' : 'text-gray-400'}
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-sm text-blue-600 mb-1">{item.category}</div>
+                        <div className="text-sm text-gray-700">{item.item}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'chat' && (
+            <div>
+              <h2 className="text-2xl font-semibold mb-4">AI Research Assistant</h2>
+              <div className="border rounded-lg h-96 flex flex-col">
+                <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                  {chatMessages.length === 0 ? (
+                    <div className="text-center text-gray-500 mt-8">
+                      <BookOpen size={48} className="mx-auto mb-4 text-gray-300" />
+                      <p className="mb-4">Ask me about DS animal models, experimental design, or research guidance!</p>
+                      <div className="text-sm space-y-2 bg-gray-50 p-4 rounded-lg">
+                        <p><strong>Try asking:</strong></p>
+                        <p>• "Which model is best for cognitive studies?"</p>
+                        <p>• "How many mice do I need for behavioral testing?"</p>
+                        <p>• "What are the advantages of Ts65Dn vs Tc1?"</p>
+                        <p>• "What RRID should I use for Dp16 mice?"</p>
+                      </div>
+                    </div>
+                  ) : (
+                    chatMessages.map((msg, idx) => (
+                      <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-3 rounded-lg ${
+                          msg.type === 'user' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          <div className="whitespace-pre-wrap">{msg.content}</div>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Resources Tab */}
-        {activeTab === 'resources' && (
-          <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-gray-900">Research Resources</h2>
-            
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Sample Size Guidelines</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Behavioral studies:</span>
-                    <span className="font-medium">n≥10 per group</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Molecular studies:</span>
-                    <span className="font-medium">n≥6 per group</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Power analysis:</span>
-                    <span className="font-medium">80% power, α=0.05</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Attrition buffer:</span>
-                    <span className="font-medium">+10-20% animals</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Key Databases</h3>
-                <div className="space-y-3">
-                  <a href="https://www.jax.org" target="_blank" rel="noopener noreferrer" 
-                     className="flex items-center text-blue-600 hover:text-blue-700">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Jackson Laboratory
-                  </a>
-                  <a href="https://www.nc3rs.org.uk/arrive-guidelines" target="_blank" rel="noopener noreferrer"
-                     className="flex items-center text-blue-600 hover:text-blue-700">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    ARRIVE Guidelines
-                  </a>
-                  <a href="https://www.ncbi.nlm.nih.gov/pubmed" target="_blank" rel="noopener noreferrer"
-                     className="flex items-center text-blue-600 hover:text-blue-700">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    PubMed
-                  </a>
+                <div className="border-t p-4 flex gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleChat()}
+                    placeholder="Ask about DS models, experimental design, RRIDs..."
+                    className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={handleChat}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Send
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </main>
-
-      {/* Model Detail Modal */}
-      {selectedModel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">{selectedModel.name}</h2>
-                <button
-                  onClick={() => setSelectedModel(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Model Details</h3>
-                  <div className="space-y-2">
-                    <div><strong>Species:</strong> {selectedModel.species}</div>
-                    <div><strong>Background:</strong> {selectedModel.background}</div>
-                    <div><strong>Trisomy:</strong> {selectedModel.trisomy}</div>
-                    <div><strong>Genes:</strong> {selectedModel.genes}</div>
-                    <div><strong>Availability:</strong> {selectedModel.availability}</div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Phenotypes</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedModel.phenotypes.map((phenotype, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                        {phenotype}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 grid gap-6 md:grid-cols-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Advantages</h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                    {selectedModel.advantages.map((advantage, idx) => (
-                      <li key={idx}>{advantage}</li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Limitations</h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                    {selectedModel.limitations.map((limitation, idx) => (
-                      <li key={idx}>{limitation}</li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Applications</h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                    {selectedModel.applications.map((application, idx) => (
-                      <li key={idx}>{application}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex space-x-4">
-                <a
-                  href={selectedModel.jackson_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Jackson Laboratory
-                </a>
-                <button
-                  onClick={() => setSelectedModel(null)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+
+        <footer className="text-center text-gray-500 text-sm mt-8">
+          <p>DS Research Assistant • Open Source • 
+            <a href="https://github.com/asathyanesan/ds-research-tool" className="text-blue-600 hover:underline ml-1">
+              View on GitHub
+            </a>
+          </p>
+          <p className="mt-2">✨ Featuring proper RRIDs for reproducible research</p>
+        </footer>
+      </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
