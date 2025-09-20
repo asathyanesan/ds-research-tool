@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Search, FileText, CheckSquare, BookOpen, Info, ExternalLink, Download } from 'lucide-react';
-import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('models');
