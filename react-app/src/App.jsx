@@ -293,11 +293,7 @@ function App() {
                         {['background', 'trisomy', 'genes', 'rrid'].map(feature => (
                           <tr key={feature}>
                             <td className="border p-3 font-medium capitalize">
-<<<<<<< Updated upstream
                               {feature === 'rrid' ? 'RRID' : feature}
-=======
-                              {feature === 'rrid' ? 'RRID' : feature.replace('_', ' ')}
->>>>>>> Stashed changes
                             </td>
                             {selectedModels.map(modelId => {
                               const model = animalModels.find(m => m.id === modelId);
@@ -423,8 +419,6 @@ function App() {
                       />
                     </div>
                   </div>
-<<<<<<< Updated upstream
-=======
 
                   <div>
                     <label className="block text-sm font-medium mb-2">Primary Endpoint</label>
@@ -434,7 +428,6 @@ function App() {
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
->>>>>>> Stashed changes
                 </div>
 
                 <div className="bg-blue-50 p-4 rounded-lg">
@@ -461,19 +454,13 @@ function App() {
                     </div>
 
                     <div>
-<<<<<<< Updated upstream
-                      <h4 className="font-medium">Common Endpoints:</h4>
-=======
                       <h4 className="font-medium">Common Endpoints by Model:</h4>
->>>>>>> Stashed changes
                       <ul className="list-disc list-inside mt-1">
                         <li>Ts65Dn: Morris Water Maze, Y-maze, NOR</li>
                         <li>Tc1: Molecular markers, gene expression</li>
                         <li>Dp16: Cytokines, interferon signaling</li>
                       </ul>
                     </div>
-<<<<<<< Updated upstream
-=======
 
                     <div>
                       <h4 className="font-medium">RRID Usage:</h4>
@@ -483,7 +470,6 @@ function App() {
                         <li>Ensures reproducibility</li>
                       </ul>
                     </div>
->>>>>>> Stashed changes
                   </div>
                 </div>
               </div>
@@ -492,13 +478,6 @@ function App() {
 
           {activeTab === 'guidelines' && (
             <div>
-<<<<<<< Updated upstream
-              <h2 className="text-2xl font-semibold mb-4">ARRIVE Guidelines Checklist</h2>
-
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                <div className="text-sm">
-                  Completed: {guidelineChecks.filter(g => g.checked).length}/{guidelineChecks.length} items
-=======
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-semibold">ARRIVE Guidelines Checklist</h2>
                 <button
@@ -513,30 +492,16 @@ function App() {
               <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                 <div className="text-sm">
                   Completed: {guidelines.filter(g => g.checked).length}/{guidelines.length} items
->>>>>>> Stashed changes
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                   <div 
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-<<<<<<< Updated upstream
-                    style={{ width: `${(guidelineChecks.filter(g => g.checked).length / guidelineChecks.length) * 100}%` }}
-=======
                     style={{ width: `${(guidelines.filter(g => g.checked).length / guidelines.length) * 100}%` }}
->>>>>>> Stashed changes
                   ></div>
                 </div>
               </div>
               
               <div className="space-y-3">
-<<<<<<< Updated upstream
-                {guidelineChecks.map((item) => (
-                  <div 
-                    key={item.id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      item.checked ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                    }`}
-                    onClick={() => handleGuidelineCheck(item.id)}
-=======
                 {guidelines.map((item, index) => (
                   <div 
                     key={index}
@@ -544,7 +509,6 @@ function App() {
                       item.checked ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                     }`}
                     onClick={() => handleGuidelineCheck(index)}
->>>>>>> Stashed changes
                   >
                     <div className="flex items-start gap-3">
                       <CheckSquare 
@@ -553,14 +517,10 @@ function App() {
                       />
                       <div className="flex-1">
                         <div className="font-medium text-sm text-blue-600 mb-1">{item.category}</div>
-<<<<<<< Updated upstream
-                        <div className="text-sm text-gray-700">{item.item}</div>
-=======
                         <div className="text-sm text-gray-700 mb-2">{item.item}</div>
                         {item.details && (
                           <div className="text-xs text-gray-500 whitespace-pre-line">{item.details}</div>
                         )}
->>>>>>> Stashed changes
                       </div>
                     </div>
                   </div>
@@ -583,13 +543,9 @@ function App() {
                         <p>• "Which model is best for cognitive studies?"</p>
                         <p>• "How many mice do I need for behavioral testing?"</p>
                         <p>• "What are the advantages of Ts65Dn vs Tc1?"</p>
-<<<<<<< Updated upstream
-                        <p>• "What RRID should I use for Dp16 mice?"</p>
-=======
                         <p>• "Design tips for immunotherapy studies?"</p>
                         <p>• "What RRID should I use for Dp16 mice?"</p>
                         <p>• "ARRIVE guidelines for my study?"</p>
->>>>>>> Stashed changes
                       </div>
                     </div>
                   ) : (
@@ -612,11 +568,7 @@ function App() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleChat()}
-<<<<<<< Updated upstream
-                    placeholder="Ask about DS models, experimental design, RRIDs..."
-=======
                     placeholder="Ask about DS models, experimental design, RRIDs, sample sizes..."
->>>>>>> Stashed changes
                     className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                   <button
@@ -630,7 +582,6 @@ function App() {
             </div>
           )}
         </div>
-<<<<<<< Updated upstream
 
         <footer className="text-center text-gray-500 text-sm mt-8">
           <p>DS Research Assistant • Open Source • 
@@ -646,20 +597,3 @@ function App() {
 }
 
 export default App;
-=======
-
-        <footer className="text-center text-gray-500 text-sm mt-8">
-          <p>DS Research Assistant • Open Source • 
-            <a href="https://github.com/YOUR_USERNAME/ds-research-tool" className="text-blue-600 hover:underline ml-1">
-              View on GitHub
-            </a>
-          </p>
-          <p className="mt-2">✨ Featuring proper RRIDs for reproducible research</p>
-        </footer>
-      </div>
-    </div>
-  );
-};
-
-export default DSResearchTool;
->>>>>>> Stashed changes
