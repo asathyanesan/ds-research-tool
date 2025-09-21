@@ -174,7 +174,7 @@ DS Research Assistant - https://asathyanesan.github.io/ds-research-tool
           <h1 className="text-4xl font-bold text-gray-800 mb-2">DS Research Assistant</h1>
           <p className="text-gray-600">Down syndrome animal model comparison and experimental design guidance</p>
           <div className="text-sm text-gray-500 mt-2 bg-white/50 rounded-lg p-2 inline-block">
-            💡 100% Open Source • Free GitHub Hosting • ARRIVE/FAIR compliant
+            💡 Open Source • Evidence-Based • ARRIVE compliance
           </div>
         </header>
 
