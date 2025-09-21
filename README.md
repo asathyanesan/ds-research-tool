@@ -143,9 +143,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
+- Trisomy 21 Research Society
 - Jackson Laboratory for strain information
 - ARRIVE guidelines consortium
-- Down syndrome research community
 - Open source contributors
 
 ## 📞 Support
