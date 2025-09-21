@@ -1,6 +1,6 @@
-# DS Research Assistant 🧬
+# DS Research Assistant (alpha version) 🧬
 
-A comprehensive web application for Down syndrome animal model comparison and experimental design guidance. Built with React and deployed free on GitHub Pages.
+A demo web application for Down syndrome animal model comparison and experimental design guidance. Built with React and deployed free on GitHub Pages.
 
 ## 🐁 Features
 
