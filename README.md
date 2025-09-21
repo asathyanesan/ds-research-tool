@@ -8,7 +8,7 @@ A demo web application for Down syndrome animal model comparison and experimenta
 - **Study Design Wizard**: Get guidance on experimental design and sample sizes
 - **ARRIVE Compliance**: Interactive checklist for reproducible research
 - **Model Comparison Tool**: Side-by-side comparison of different animal models
-- **Jackson Lab Integration**: Direct links to strain information and ordering
+- **Repository Links**: Direct links to strain information and ordering
 - **Search & Filter**: Find the right model for your research question
 
 ## 🌐 Demo
