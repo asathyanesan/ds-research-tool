@@ -68,8 +68,8 @@ function App() {
     }
   ];
 
-  // ARRIVE guidelines data
-  const guidelines = [
+  // ARRIVE guidelines data - NOW IN STATE
+  const [guidelines, setGuidelines] = useState([
     { id: 1, category: 'Study Design', item: 'Provide precise details of study design including primary research question', checked: false },
     { id: 2, category: 'Study Design', item: 'Explain how sample size was determined', checked: false },
     { id: 3, category: 'Animals', item: 'Provide details of animals used including species, strain, sex, age', checked: false },
@@ -80,9 +80,7 @@ function App() {
     { id: 8, category: 'Statistics', item: 'Report exact P values and effect sizes where possible', checked: false },
     { id: 9, category: 'Results', item: 'Report study timeline and actual sample sizes', checked: false },
     { id: 10, category: 'Results', item: 'Present results with appropriate statistics', checked: false }
-  ];
-
-  const [guidelineChecks, setGuidelineChecks] = useState(guidelines);
+  ]);
 
   const simulateLLMResponse = (query) => {
     const lowerQuery = query.toLowerCase();
@@ -129,9 +127,38 @@ function App() {
   };
 
   const handleGuidelineCheck = (id) => {
-    setGuidelineChecks(prev => prev.map(item => 
+    setGuidelines(prev => prev.map(item => 
       item.id === id ? { ...item, checked: !item.checked } : item
     ));
+  };
+
+  const exportChecklist = () => {
+    const completedItems = guidelines.filter(g => g.checked);
+    const totalItems = guidelines.length;
+    const completionRate = Math.round((completedItems.length / totalItems) * 100);
+    
+    const exportText = `ARRIVE Guidelines Checklist Export
+Generated: ${new Date().toLocaleDateString()}
+Completion: ${completedItems.length}/${totalItems} items (${completionRate}%)
+
+COMPLETED ITEMS:
+${completedItems.map(item => `✓ ${item.category}: ${item.item}`).join('\n')}
+
+REMAINING ITEMS:
+${guidelines.filter(g => !g.checked).map(item => `☐ ${item.category}: ${item.item}`).join('\n')}
+
+DS Research Assistant - https://asathyanesan.github.io/ds-research-tool
+`;
+
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'arrive-checklist.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const filteredModels = animalModels.filter(model =>
@@ -502,13 +529,13 @@ function App() {
               </div>
               
               <div className="space-y-3">
-                {guidelines.map((item, index) => (
+                {guidelines.map((item) => (
                   <div 
-                    key={index}
+                    key={item.id}
                     className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                       item.checked ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                     }`}
-                    onClick={() => handleGuidelineCheck(index)}
+                    onClick={() => handleGuidelineCheck(item.id)}
                   >
                     <div className="flex items-start gap-3">
                       <CheckSquare 
