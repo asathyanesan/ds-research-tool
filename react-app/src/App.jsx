@@ -7,6 +7,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Animal models data - directly in component for simplicity
   const animalModels = [
@@ -82,6 +83,51 @@ function App() {
     { id: 10, category: 'Results', item: 'Present results with appropriate statistics', checked: false }
   ]);
 
+  // HuggingFace API integration
+  const callHuggingFaceAPI = async (prompt) => {
+    const apiKey = import.meta.env.VITE_HUGGINGFACE_API_KEY;
+    
+    if (!apiKey) {
+      console.log('No HuggingFace API key found, using fallback response');
+      return null;
+    }
+
+    try {
+      const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: `DS research question: ${prompt}`,
+          parameters: {
+            max_new_tokens: 150,
+            temperature: 0.7,
+            do_sample: true
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.generated_text) {
+        return data.generated_text.replace(`DS research question: ${prompt}`, '').trim();
+      } else if (data[0]?.generated_text) {
+        return data[0].generated_text.replace(`DS research question: ${prompt}`, '').trim();
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('HuggingFace API error:', error);
+      return null;
+    }
+  };
+
   const simulateLLMResponse = (query) => {
     const lowerQuery = query.toLowerCase();
     
@@ -108,14 +154,51 @@ function App() {
     return 'I can help with DS animal model selection, experimental design, sample size calculations, ARRIVE compliance, and RRID identification. Ask me about specific models or research guidelines!';
   };
 
-  const handleChat = () => {
+  const handleChat = async () => {
     if (!chatInput.trim()) return;
     
+    setIsLoading(true);
     const userMessage = { type: 'user', content: chatInput };
-    const llmResponse = { type: 'assistant', content: simulateLLMResponse(chatInput) };
     
-    setChatMessages(prev => [...prev, userMessage, llmResponse]);
+    // Add user message immediately
+    setChatMessages(prev => [...prev, userMessage]);
+    const currentInput = chatInput;
     setChatInput('');
+
+    try {
+      // Try HuggingFace API first
+      const aiResponse = await callHuggingFaceAPI(currentInput);
+      
+      let responseContent;
+      let isAiResponse = false;
+      
+      if (aiResponse && aiResponse.length > 10) {
+        responseContent = aiResponse;
+        isAiResponse = true;
+      } else {
+        // Fallback to curated responses
+        responseContent = simulateLLMResponse(currentInput);
+      }
+      
+      const assistantMessage = { 
+        type: 'assistant', 
+        content: responseContent,
+        isAiResponse: isAiResponse
+      };
+      
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      // Fallback to curated response on error
+      const fallbackMessage = { 
+        type: 'assistant', 
+        content: simulateLLMResponse(currentInput),
+        isAiResponse: false
+      };
+      setChatMessages(prev => [...prev, fallbackMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleModelSelect = (modelId) => {
@@ -576,17 +659,36 @@ DS Research Assistant - https://asathyanesan.github.io/ds-research-tool
                       </div>
                     </div>
                   ) : (
-                    chatMessages.map((msg, idx) => (
-                      <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] p-3 rounded-lg ${
-                          msg.type === 'user' 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          <div className="whitespace-pre-wrap">{msg.content}</div>
+                    <>
+                      {chatMessages.map((msg, idx) => (
+                        <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[80%] p-3 rounded-lg ${
+                            msg.type === 'user' 
+                              ? 'bg-blue-500 text-white' 
+                              : msg.isAiResponse 
+                                ? 'bg-green-50 text-gray-800 border-2 border-green-200'
+                                : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {msg.type === 'assistant' && msg.isAiResponse && (
+                              <div className="text-xs text-green-600 mb-1 flex items-center gap-1">
+                                🤖 AI Enhanced • Real-time response
+                              </div>
+                            )}
+                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                      {isLoading && (
+                        <div className="flex justify-start">
+                          <div className="bg-gray-100 text-gray-800 p-3 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                              <span>AI is thinking...</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
                 <div className="border-t p-4 flex gap-2">
@@ -594,15 +696,21 @@ DS Research Assistant - https://asathyanesan.github.io/ds-research-tool
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleChat()}
+                    onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleChat()}
                     placeholder="Ask about DS models, experimental design, RRIDs, sample sizes..."
                     className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    disabled={isLoading}
                   />
                   <button
                     onClick={handleChat}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    disabled={isLoading || !chatInput.trim()}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      isLoading || !chatInput.trim()
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-blue-500 text-white hover:bg-blue-600'
+                    }`}
                   >
-                    Send
+                    {isLoading ? 'Sending...' : 'Send'}
                   </button>
                 </div>
               </div>
