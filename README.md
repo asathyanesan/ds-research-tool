@@ -72,7 +72,7 @@ Animal model data and research guidelines are automatically updated weekly via G
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Coming soon!
 
 ### Adding New Models
 1. Edit `react-app/public/data/animal-models.json`
