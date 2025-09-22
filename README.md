@@ -151,7 +151,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## 📞 Support
 
 - 🐛 Issues: [GitHub Issues](https://github.com/asathyanesan/ds-research-tool/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/asathyanesan/ds-research-tool/discussions)
+- 💬 Discussions: coming soon!
 
 ---
 
